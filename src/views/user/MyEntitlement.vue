@@ -1,6 +1,9 @@
 <template>
   <div v-loading="loading">
-    <h2 class="page-title">我的权益</h2>
+    <div class="page-header">
+      <h2 class="page-title">我的权益</h2>
+      <el-button :loading="loading" @click="handleRefresh">刷新</el-button>
+    </div>
     <EntitlementCard v-if="activeEntitlement" :entitlement="activeEntitlement" />
     <el-empty v-else description="暂无有效权益">
       <el-button type="primary" @click="$router.push('/')">去购买</el-button>
@@ -24,6 +27,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { getMyEntitlement, listMyEntitlementHistory } from '@/api/entitlement'
 import EntitlementCard from '@/components/EntitlementCard.vue'
 import { entitlementStatusText, formatDateTime } from '@/utils/format'
@@ -47,12 +51,30 @@ async function loadData() {
   }
 }
 
+async function handleRefresh() {
+  await loadData()
+  if (activeEntitlement.value?.vpnConfig) {
+    ElMessage.success('VPN 配置已更新')
+  } else if (activeEntitlement.value) {
+    ElMessage.info('权益已刷新，VPN 配置仍在生成中')
+  } else {
+    ElMessage.info('暂无有效权益')
+  }
+}
+
 onMounted(loadData)
 </script>
 
 <style scoped>
-.page-title {
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 24px;
+}
+
+.page-title {
+  margin: 0;
 }
 .section-title {
   margin: 32px 0 16px;

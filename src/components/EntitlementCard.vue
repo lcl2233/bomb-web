@@ -13,11 +13,27 @@
         <span class="remaining">{{ entitlement.remainingDays }} 天</span>
       </el-descriptions-item>
     </el-descriptions>
+
+    <VpnConfigPanel
+      v-if="entitlement.vpnConfig"
+      :config="entitlement.vpnConfig"
+      :client-name="entitlement.vpnClientName"
+    />
+    <el-alert
+      v-else-if="entitlement.status === 'ACTIVE'"
+      type="warning"
+      :closable="false"
+      show-icon
+      title="VPN 配置生成中"
+      description="支付成功后配置需要几秒钟生成，请稍后刷新本页。"
+      class="vpn-pending"
+    />
   </el-card>
 </template>
 
 <script setup lang="ts">
 import type { EntitlementVO } from '@/types'
+import VpnConfigPanel from '@/components/VpnConfigPanel.vue'
 import { entitlementStatusText, formatDateTime } from '@/utils/format'
 
 defineProps<{ entitlement: EntitlementVO }>()
@@ -41,5 +57,8 @@ defineProps<{ entitlement: EntitlementVO }>()
   color: #67c23a;
   font-weight: 700;
   font-size: 18px;
+}
+.vpn-pending {
+  margin-top: 16px;
 }
 </style>

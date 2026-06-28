@@ -59,6 +59,8 @@ export interface EntitlementVO {
   expireAt: string
   status: string
   remainingDays: number
+  vpnClientName?: string
+  vpnConfig?: string
 }
 
 export interface AlipayPayResponse {
