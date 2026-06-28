@@ -30,7 +30,15 @@ request.interceptors.response.use(
     return response.data
   },
   (error) => {
-    ElMessage.error(error.message || '网络错误')
+    const status = error.response?.status
+    const res = error.response?.data as Result<unknown> | undefined
+    if (status === 401 || res?.code === 401) {
+      removeToken()
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
+      }
+    }
+    ElMessage.error(res?.message || error.message || '网络错误')
     return Promise.reject(error)
   }
 )

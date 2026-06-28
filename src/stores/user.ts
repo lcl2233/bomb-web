@@ -12,18 +12,34 @@ export const useUserStore = defineStore('user', () => {
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
   async function fetchUser() {
-    if (!token.value) {
+    const latestToken = getToken()
+    if (!latestToken) {
       user.value = null
+      token.value = null
       return
     }
-    const res = await getMe()
-    user.value = res.data
+    token.value = latestToken
+    try {
+      const res = await getMe()
+      user.value = res.data
+    } catch {
+      logout()
+    }
+  }
+
+  /** 每次路由跳转时同步 localStorage 中的 token，并刷新用户信息 */
+  async function syncUser() {
+    const latestToken = getToken()
+    if (!latestToken) {
+      logout()
+      return
+    }
+    token.value = latestToken
+    await fetchUser()
   }
 
   async function initUser() {
-    if (token.value && !user.value) {
-      await fetchUser()
-    }
+    await syncUser()
   }
 
   async function login(username: string, password: string) {
@@ -52,6 +68,7 @@ export const useUserStore = defineStore('user', () => {
     isLoggedIn,
     isAdmin,
     fetchUser,
+    syncUser,
     initUser,
     login,
     register,

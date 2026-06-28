@@ -1,5 +1,9 @@
 <template>
-  <div v-loading="loading" class="checkout-page">
+  <div
+    v-loading="loading || paying"
+    :element-loading-text="paying ? '正在创建订单，即将跳转支付宝...' : '加载中...'"
+    class="checkout-page"
+  >
     <h2>确认订单</h2>
     <el-card v-if="product">
       <el-descriptions :column="1" border>
@@ -11,8 +15,10 @@
         </el-descriptions-item>
       </el-descriptions>
       <div class="actions">
-        <el-button @click="$router.back()">返回</el-button>
-        <el-button type="primary" :loading="paying" @click="handlePay">去支付</el-button>
+        <el-button :disabled="paying" @click="$router.back()">返回</el-button>
+        <el-button type="primary" :loading="paying" :disabled="paying" @click="handlePay">
+          {{ paying ? '跳转中...' : '去支付' }}
+        </el-button>
       </div>
     </el-card>
   </div>
@@ -25,10 +31,13 @@ import { ElMessage } from 'element-plus'
 import { getProduct } from '@/api/product'
 import { createOrder } from '@/api/order'
 import { createAlipayPay } from '@/api/payment'
+import { useUserStore } from '@/stores/user'
 import { formatMoney, submitAlipayForm } from '@/utils/format'
+import { savePaySession, savePayUsername } from '@/utils/auth'
 import type { ProductVO } from '@/types'
 
 const route = useRoute()
+const userStore = useUserStore()
 const loading = ref(false)
 const paying = ref(false)
 const product = ref<ProductVO | null>(null)
@@ -44,16 +53,20 @@ async function loadProduct() {
 }
 
 async function handlePay() {
-  if (!product.value) return
+  if (!product.value || paying.value) return
   paying.value = true
   try {
     const orderRes = await createOrder(product.value.id)
     const payRes = await createAlipayPay(orderRes.data.orderNo)
+    savePaySession()
+    if (userStore.user?.username) {
+      savePayUsername(userStore.user.username)
+    }
     submitAlipayForm(payRes.data.payForm)
+    // 跳转支付宝前保持 loading，防止重复点击
   } catch {
-    ElMessage.error('创建支付失败，请检查支付宝配置')
-  } finally {
     paying.value = false
+    ElMessage.error('创建支付失败，请检查支付宝配置')
   }
 }
 

@@ -44,11 +44,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getMyEntitlement } from '@/api/entitlement'
 import VpnConfigPanel from '@/components/VpnConfigPanel.vue'
+import { useUserStore } from '@/stores/user'
+import { getPayUsername, restorePaySessionIfNeeded } from '@/utils/auth'
 import type { EntitlementVO } from '@/types'
 
 const route = useRoute()
+const userStore = useUserStore()
 const orderNo = ref('')
 const tradeNo = ref('')
 const loading = ref(false)
@@ -119,6 +123,17 @@ function startPolling() {
 onMounted(async () => {
   orderNo.value = (route.query.orderNo as string) || (route.query.out_trade_no as string) || ''
   tradeNo.value = (route.query.tradeNo as string) || (route.query.trade_no as string) || ''
+
+  const payUsername = getPayUsername()
+  if (restorePaySessionIfNeeded()) {
+    await userStore.syncUser()
+    ElMessage.warning(
+      payUsername
+        ? `检测到登录账号被切换，已恢复为支付时的账号：${payUsername}`
+        : '检测到登录账号被切换，已恢复为支付时的账号',
+    )
+  }
+
   await fetchEntitlement()
   if (status.value !== 'ready') {
     startPolling()

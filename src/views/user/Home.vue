@@ -1,9 +1,12 @@
 <template>
-  <div v-loading="loading">
+  <div
+    v-loading="loading || buyingProductId != null"
+    :element-loading-text="buyingProductId != null ? '正在前往下单...' : '加载中...'"
+  >
     <h2 class="page-title">VPN 套餐</h2>
     <el-row :gutter="20">
       <el-col v-for="item in products" :key="item.id" :xs="24" :sm="12" :md="8">
-        <ProductCard :product="item" @buy="handleBuy" />
+        <ProductCard :product="item" :buying-id="buyingProductId" @buy="handleBuy" />
       </el-col>
     </el-row>
     <el-empty v-if="!loading && products.length === 0" description="暂无商品" />
@@ -21,6 +24,7 @@ import type { ProductVO } from '@/types'
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const buyingProductId = ref<number | null>(null)
 const products = ref<ProductVO[]>([])
 
 async function loadProducts() {
@@ -33,12 +37,18 @@ async function loadProducts() {
   }
 }
 
-function handleBuy(productId: number) {
-  if (!userStore.isLoggedIn) {
-    router.push({ name: 'Login', query: { redirect: `/checkout/${productId}` } })
-    return
+async function handleBuy(productId: number) {
+  if (buyingProductId.value != null) return
+  buyingProductId.value = productId
+  try {
+    if (!userStore.isLoggedIn) {
+      await router.push({ name: 'Login', query: { redirect: `/checkout/${productId}` } })
+      return
+    }
+    await router.push(`/checkout/${productId}`)
+  } finally {
+    buyingProductId.value = null
   }
-  router.push(`/checkout/${productId}`)
 }
 
 onMounted(loadProducts)

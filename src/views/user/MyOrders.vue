@@ -1,5 +1,8 @@
 <template>
-  <div v-loading="loading">
+  <div
+    v-loading="loading || !!payingOrderNo"
+    :element-loading-text="payingOrderNo ? '正在跳转支付宝...' : '加载中...'"
+  >
     <h2 class="page-title">我的订单</h2>
     <el-table :data="orders" stripe>
       <el-table-column prop="orderNo" label="订单号" min-width="180" />
@@ -19,6 +22,8 @@
             v-if="row.status === 'PENDING'"
             link
             type="primary"
+            :loading="payingOrderNo === row.orderNo"
+            :disabled="!!payingOrderNo"
             @click="handlePay(row.orderNo)"
           >
             去支付
@@ -27,6 +32,7 @@
             v-if="row.status === 'PENDING'"
             link
             type="danger"
+            :disabled="!!payingOrderNo"
             @click="handleCancel(row.orderNo)"
           >
             取消
@@ -51,11 +57,15 @@ import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listMyOrders, cancelOrder } from '@/api/order'
 import { createAlipayPay } from '@/api/payment'
+import { useUserStore } from '@/stores/user'
 import OrderStatusTag from '@/components/OrderStatusTag.vue'
 import { formatDateTime, formatMoney, submitAlipayForm } from '@/utils/format'
+import { savePaySession, savePayUsername } from '@/utils/auth'
 import type { OrderVO } from '@/types'
 
+const userStore = useUserStore()
 const loading = ref(false)
+const payingOrderNo = ref<string | null>(null)
 const orders = ref<OrderVO[]>([])
 const page = ref(1)
 const pageSize = 10
@@ -73,8 +83,19 @@ async function loadOrders() {
 }
 
 async function handlePay(orderNo: string) {
-  const payRes = await createAlipayPay(orderNo)
-  submitAlipayForm(payRes.data.payForm)
+  if (payingOrderNo.value) return
+  payingOrderNo.value = orderNo
+  try {
+    const payRes = await createAlipayPay(orderNo)
+    savePaySession()
+    if (userStore.user?.username) {
+      savePayUsername(userStore.user.username)
+    }
+    submitAlipayForm(payRes.data.payForm)
+  } catch {
+    payingOrderNo.value = null
+    ElMessage.error('创建支付失败，请稍后重试')
+  }
 }
 
 async function handleCancel(orderNo: string) {

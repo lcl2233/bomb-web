@@ -1,6 +1,10 @@
 <template>
-  <div v-loading="loading" class="detail-page">
-    <el-page-header @back="$router.push('/')" content="商品详情" />
+  <div
+    v-loading="loading || buying"
+    :element-loading-text="buying ? '正在前往下单...' : '加载中...'"
+    class="detail-page"
+  >
+    <el-page-header @back="handleBack" content="商品详情" />
     <el-card v-if="product" class="detail-card">
       <h2>{{ product.name }}</h2>
       <p class="desc">{{ product.description }}</p>
@@ -8,7 +12,9 @@
         <span class="price">{{ formatMoney(product.price) }}</span>
         <span>有效时长：{{ product.durationDays }} 天</span>
       </div>
-      <el-button type="primary" size="large" @click="handleBuy">立即购买</el-button>
+      <el-button type="primary" size="large" :loading="buying" :disabled="buying" @click="handleBuy">
+        {{ buying ? '跳转中...' : '立即购买' }}
+      </el-button>
     </el-card>
   </div>
 </template>
@@ -25,6 +31,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const buying = ref(false)
 const product = ref<ProductVO | null>(null)
 
 async function loadProduct() {
@@ -37,13 +44,23 @@ async function loadProduct() {
   }
 }
 
-function handleBuy() {
-  if (!product.value) return
-  if (!userStore.isLoggedIn) {
-    router.push({ name: 'Login', query: { redirect: `/checkout/${product.value.id}` } })
-    return
+async function handleBuy() {
+  if (!product.value || buying.value) return
+  buying.value = true
+  try {
+    if (!userStore.isLoggedIn) {
+      await router.push({ name: 'Login', query: { redirect: `/checkout/${product.value.id}` } })
+      return
+    }
+    await router.push(`/checkout/${product.value.id}`)
+  } finally {
+    buying.value = false
   }
-  router.push(`/checkout/${product.value.id}`)
+}
+
+function handleBack() {
+  if (buying.value) return
+  router.push('/')
 }
 
 onMounted(loadProduct)

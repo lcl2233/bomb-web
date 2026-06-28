@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getToken } from '@/utils/auth'
+import { getToken, restorePaySessionIfNeeded } from '@/utils/auth'
 import { useUserStore } from '@/stores/user'
 
 const router = createRouter({
@@ -37,8 +37,12 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const userStore = useUserStore()
 
+  if (to.name === 'PayResult') {
+    restorePaySessionIfNeeded()
+  }
+
   if (getToken()) {
-    await userStore.initUser()
+    await userStore.syncUser()
   }
 
   if (to.meta.requiresAuth && !userStore.isLoggedIn) {

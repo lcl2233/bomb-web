@@ -8,7 +8,14 @@
     </div>
     <div class="actions">
       <el-button @click="$router.push(`/products/${product.id}`)">查看详情</el-button>
-      <el-button type="primary" @click="$emit('buy', product.id)">立即购买</el-button>
+      <el-button
+        type="primary"
+        :loading="buyingId === product.id"
+        :disabled="buyingId != null"
+        @click="$emit('buy', product.id)"
+      >
+        {{ buyingId === product.id ? '跳转中...' : '立即购买' }}
+      </el-button>
     </div>
   </el-card>
 </template>
@@ -17,7 +24,7 @@
 import type { ProductVO } from '@/types'
 import { formatMoney } from '@/utils/format'
 
-defineProps<{ product: ProductVO }>()
+defineProps<{ product: ProductVO; buyingId?: number | null }>()
 defineEmits<{ buy: [id: number] }>()
 </script>
 
